@@ -149,12 +149,14 @@ mpiPi_init (char *appName, mpiPi_thr_mode_t thr_mode)
   mpiPi.disable_finalize_report = 0;
   mpiPi.do_collective_stats_report = 0;
   mpiPi.do_pt2pt_stats_report = 0;
+  mpiPi.do_pt2pt_graph_report = 1;
 #ifdef SO_LOOKUP
   mpiPi.so_info = NULL;
 #endif
   mpiPi_getenv ();
 
   mpiPi_stats_mt_init(&mpiPi.task_stats, thr_mode);
+  mpiPi_graph_init(&mpiPi.graph);
 
   /* -- welcome msg only collector  */
   if (mpiPi.collectorRank == mpiPi.rank)
@@ -786,6 +788,7 @@ mpiPi_finalize ()
     mpiPi_generateReport (mpiPi.report_style);
 
   mpiPi_stats_mt_fini(&mpiPi.task_stats);
+  mpiPi_graph_fini(&mpiPi.graph);
 
   if (mpiPi.global_task_app_time != NULL)
     free (mpiPi.global_task_app_time);

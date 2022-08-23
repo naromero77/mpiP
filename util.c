@@ -80,7 +80,7 @@ mpiPi_getenv ()
 
       av[ac] = NULL;
 
-      for (; ((c = getopt (ac, av, "cdef:gk:lm:noprs:t:vx:yz")) != EOF);)
+      for (; ((c = getopt (ac, av, "cdef:gk:lm:noprs:t:vwx:yz")) != EOF);)
         {
           switch (c)
             {
@@ -263,6 +263,10 @@ mpiPi_getenv ()
               mpiPi.do_pt2pt_stats_report = 1;
               break;
 
+            case 'w':
+              mpiPi.do_pt2pt_graph_report = 1;
+              break;
+
             case 'a':
             case 'b':
             case 'h':
@@ -270,7 +274,6 @@ mpiPi_getenv ()
             case 'j':
             case 'q':
             case 'u':
-            case 'w':
             default:
               if (mpiPi.rank == 0)
                 mpiPi_msg_warn

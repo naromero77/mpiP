@@ -25,6 +25,7 @@ void
 mpiPi_reset_callsite_data ()
 {
   mpiPi_stats_mt_cs_reset(&mpiPi.task_stats);
+  mpiPi_graph_reset_all(&mpiPi.graph);
   /* Drop the content of the src ID cache so the old callsites won't appear in
    * the callsites unless they are invoked again
    */
@@ -81,11 +82,13 @@ mpiPi_MPI_Pcontrol (const int flag)
   else if (flag == 3)
     {
       mpiPi_generateReport (mpiPi_style_verbose);
+      mpiPi_graph_reset_all(&mpiPi.graph);
       mpiPi_stats_mt_timer_start(&mpiPi.task_stats);
     }
   else if (flag == 4)
     {
       mpiPi_generateReport (mpiPi_style_concise);
+      mpiPi_graph_reset_all(&mpiPi.graph);
       mpiPi_stats_mt_timer_start(&mpiPi.task_stats);
     }
   else
@@ -96,6 +99,7 @@ mpiPi_MPI_Pcontrol (const int flag)
 
       mpiPi.enabled = 1;
       mpiPi.enabledCount++;
+      mpiPi_graph_reset_all(&mpiPi.graph);
       mpiPi_stats_mt_timer_start(&mpiPi.task_stats);
     }
 

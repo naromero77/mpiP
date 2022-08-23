@@ -710,6 +710,40 @@ mpiPi_print_top_time_sites (FILE * fp)
 }
 
 static void
+mpiPi_print_comm_graph (FILE * fp)
+{
+  int bufsize = (mpiPi.graph.size + 7) / 8;
+  if (mpiPi.rank == mpiPi.collectorRank) {
+    int i, j;
+    char* buf = NULL;
+    char* ptr = NULL;
+    print_section_heading(fp, "Communication Graph (global communicator)");
+    fprintf (fp, "%7s  %s\n", "Rank", "Neighbours");
+    buf = (char*)malloc(bufsize);
+    for (i = 0; i < mpiPi.graph.size; i++) {
+      if (i == mpiPi.rank) {
+        ptr = mpiPi.graph.neighbors;
+      } else {
+        MPI_Status s;
+        MPI_Recv(buf, bufsize, MPI_BYTE, i, 0, MPI_COMM_WORLD, &s);
+        ptr = buf;
+      }
+      fprintf(fp, "%6d: ", i);
+      for (j = 0; j < mpiPi.graph.size; j++) {
+        if ((ptr[j / 8] & (1u << (j % 8))) != 0) {
+          fprintf(fp, " %d", j);
+        }
+      }
+      fprintf(fp, "\n");
+    }
+    free(buf);
+  } else {
+    MPI_Send(mpiPi.graph.neighbors, bufsize, MPI_BYTE, mpiPi.collectorRank, 0,
+             MPI_COMM_WORLD);
+  }
+}
+
+static void
 mpiPi_print_top_sent_sites (FILE * fp)
 {
   int i, ac;
@@ -2892,6 +2926,10 @@ mpiPi_profile_print (FILE * fp, int report_style)
     mpiPi_profile_print_verbose (fp);
   else if (report_style == mpiPi_style_concise)
     mpiPi_profile_print_concise (fp);
+
+  if (mpiPi.do_pt2pt_graph_report) {
+    mpiPi_print_comm_graph(fp);
+  }
 
   if (mpiPi.collectorRank == mpiPi.rank)
     print_section_heading (fp, "End of Report");
