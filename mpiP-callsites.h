@@ -18,8 +18,7 @@
 #include "mpiPconfig.h"
 
 /* Callsite statistics */
-typedef struct _callsite_stats
-{
+typedef struct _callsite_stats {
   unsigned op;
   unsigned rank;
   int csid;
@@ -47,17 +46,15 @@ typedef struct _callsite_stats
   long cookie;
 } callsite_stats_t;
 
-
 /*
  * Simple callsite structure management routines
  */
-void mpiPi_cs_init(callsite_stats_t *csp, void *pc[],
-                   unsigned op, unsigned rank);
+void mpiPi_cs_init(callsite_stats_t *csp, void *pc[], unsigned op,
+                   unsigned rank);
 void mpiPi_cs_reset_stat(callsite_stats_t *csp);
 void mpiPi_cs_merge(callsite_stats_t *dst, callsite_stats_t *src);
-void mpiPi_cs_update(callsite_stats_t *csp, double dur,
-                     double sendSize, double ioSize, double rmaSize,
-                     double threshold);
+void mpiPi_cs_update(callsite_stats_t *csp, double dur, double sendSize,
+                     double ioSize, double rmaSize, double threshold);
 
 /*
  * Callsite caching
@@ -66,9 +63,9 @@ void mpiPi_cs_cache_init();
 /* Translate callstats record (the pc) to src file, line and assign a
  * callsite id.
  */
-int mpiPi_query_src (callsite_stats_t * p);
+int mpiPi_query_src(callsite_stats_t *p);
 
-#endif // MPIPCALLSITES_H
+#endif  // MPIPCALLSITES_H
 
 /*
 

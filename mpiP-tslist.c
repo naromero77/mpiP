@@ -7,72 +7,70 @@
    -----
 
    thread_safe_list.c -- Implementation of the thread-safe list based on atomics
-   NOTE: only one thread is allowed to extract elements, but many can contribute.
-   This fits perfectly fine with the purpose of holding TLS pointers in mpiP.
+   NOTE: only one thread is allowed to extract elements, but many can
+   contribute. This fits perfectly fine with the purpose of holding TLS pointers
+   in mpiP.
 
  */
 
+#include "mpiP-tslist.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "arch/arch.h"
-#include "mpiP-tslist.h"
 
-mpiP_tslist_t *mpiPi_tslist_create()
-{
+mpiP_tslist_t *mpiPi_tslist_create() {
   mpiP_tslist_t *list = calloc(1, sizeof(*list));
-  if( NULL == list ) {
-      return NULL;
-    }
+  if (NULL == list) {
+    return NULL;
+  }
   list->head = calloc(1, sizeof(*list->head));
   list->tail = list->head;
   return list;
 }
-void mpiPi_tslist_release(mpiP_tslist_t *list)
-{
+void mpiPi_tslist_release(mpiP_tslist_t *list) {
   free(list->head);
   list->head = list->tail = NULL;
   free(list);
 }
 
-void mpiPi_tslist_append(mpiP_tslist_t *list, void *data_ptr)
-{
+void mpiPi_tslist_append(mpiP_tslist_t *list, void *data_ptr) {
   mpiP_tslist_elem_t *elem = calloc(1, sizeof(*elem));
   elem->next = NULL;
   elem->ptr = data_ptr;
-  /* Ensure that all chnages to the elem structure are complete */////
+  /* Ensure that all chnages to the elem structure are complete */  ////
   mpiP_atomic_wmb();
   /* Atomically swap the tail of the list to point to this element */
-  mpiP_tslist_elem_t *prev = (mpiP_tslist_elem_t*)mpiP_atomic_swap((void**)&list->tail, elem);
+  mpiP_tslist_elem_t *prev =
+      (mpiP_tslist_elem_t *)mpiP_atomic_swap((void **)&list->tail, elem);
   prev->next = elem;
 }
 
-void *mpiPi_tslist_dequeue(mpiP_tslist_t *list)
-{
+void *mpiPi_tslist_dequeue(mpiP_tslist_t *list) {
   mpiP_tslist_elem_t *elem = NULL, *tmp;
   void *ret = NULL;
 
-  if( list->head == list->tail ){
-      // the list is empty
-      return NULL;
-    }
+  if (list->head == list->tail) {
+    // the list is empty
+    return NULL;
+  }
 
-  if(list->head->next == NULL ){
-      // Someone is adding a new element, but it is not yet ready
-      return NULL;
-    }
+  if (list->head->next == NULL) {
+    // Someone is adding a new element, but it is not yet ready
+    return NULL;
+  }
 
   elem = list->head->next;
-  if( elem->next ) {
-      /* We have more than one elements in the list
-         * it is safe to dequeue this elemen as only one thread
-         * is allowed to dequeue
-         */
-      list->head->next = elem->next;
-      /* Terminate element to be on the safe side */
-      elem->next = NULL;
-      goto ret;
-    }
+  if (elem->next) {
+    /* We have more than one elements in the list
+     * it is safe to dequeue this elemen as only one thread
+     * is allowed to dequeue
+     */
+    list->head->next = elem->next;
+    /* Terminate element to be on the safe side */
+    elem->next = NULL;
+    goto ret;
+  }
 
   /* There is a possibility of a race condition:
    * elem->next may still be NULL while a new addition has started that
@@ -80,20 +78,20 @@ void *mpiPi_tslist_dequeue(mpiP_tslist_t *list)
    */
   list->head->next = NULL;
   tmp = elem;
-  if( mpiP_atomic_cas((void**)&list->tail, (void**)&tmp, list->head) ){
-      /* Replacement was successful, this means that list->head was placed
-       * as the very first element of the list
-       */
+  if (mpiP_atomic_cas((void **)&list->tail, (void **)&tmp, list->head)) {
+    /* Replacement was successful, this means that list->head was placed
+     * as the very first element of the list
+     */
   } else {
-      /* Replacement failed, this means that other thread is in the process
-       * of adding to the list
-       */
-      /* Wait for the pointer to appear */
-      while(NULL != elem->next) {
-          mpiP_atomic_isync();
-      }
-      /* Hand this element over to the head element */
-      list->head->next = elem->next;
+    /* Replacement failed, this means that other thread is in the process
+     * of adding to the list
+     */
+    /* Wait for the pointer to appear */
+    while (NULL != elem->next) {
+      mpiP_atomic_isync();
+    }
+    /* Hand this element over to the head element */
+    list->head->next = elem->next;
   }
 ret:
   ret = elem->ptr;
@@ -101,13 +99,11 @@ ret:
   return ret;
 }
 
-mpiP_tslist_elem_t *mpiPi_tslist_first(mpiP_tslist_t *list)
-{
+mpiP_tslist_elem_t *mpiPi_tslist_first(mpiP_tslist_t *list) {
   return list->head->next;
 }
 
-mpiP_tslist_elem_t *mpiPi_tslist_next(mpiP_tslist_elem_t *current)
-{
+mpiP_tslist_elem_t *mpiPi_tslist_next(mpiP_tslist_elem_t *current) {
   return current->next;
 }
 

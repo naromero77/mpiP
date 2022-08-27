@@ -12,13 +12,11 @@
 
 */
 
-#include <string.h>
 #include "mpiP-callsites.h"
+#include <string.h>
 #include "mpiPi.h"
 
-
-void mpiPi_cs_reset_stat(callsite_stats_t *csp)
-{
+void mpiPi_cs_reset_stat(callsite_stats_t *csp) {
   csp->maxDur = 0;
   csp->minDur = DBL_MAX;
   csp->maxIO = 0;
@@ -35,64 +33,57 @@ void mpiPi_cs_reset_stat(callsite_stats_t *csp)
   csp->arbitraryMessageCount = 0;
 }
 
-void mpiPi_cs_init(callsite_stats_t *csp, void *pc[],
-                   unsigned op, unsigned rank)
-{
+void mpiPi_cs_init(callsite_stats_t *csp, void *pc[], unsigned op,
+                   unsigned rank) {
   int i;
   csp->op = op;
   csp->rank = rank;
-  for (i = 0; i < mpiPi.fullStackDepth; i++)
-    {
-      csp->pc[i] = pc[i];
-    }
+  for (i = 0; i < mpiPi.fullStackDepth; i++) {
+    csp->pc[i] = pc[i];
+  }
   csp->cookie = MPIP_CALLSITE_STATS_COOKIE;
   mpiPi_cs_reset_stat(csp);
 }
 
-void mpiPi_cs_update(callsite_stats_t *csp, double dur,
-                     double sendSize, double ioSize, double rmaSize,
-                     double threshold)
-{
+void mpiPi_cs_update(callsite_stats_t *csp, double dur, double sendSize,
+                     double ioSize, double rmaSize, double threshold) {
   csp->count++;
   csp->cumulativeTime += dur;
-  assert (csp->cumulativeTime >= 0);
+  assert(csp->cumulativeTime >= 0);
   csp->cumulativeTimeSquared += (dur * dur);
-  assert (csp->cumulativeTimeSquared >= 0);
-  csp->maxDur = max (csp->maxDur, dur);
-  csp->minDur = min (csp->minDur, dur);
+  assert(csp->cumulativeTimeSquared >= 0);
+  csp->maxDur = max(csp->maxDur, dur);
+  csp->minDur = min(csp->minDur, dur);
   csp->cumulativeDataSent += sendSize;
   csp->cumulativeIO += ioSize;
   csp->cumulativeRMA += rmaSize;
 
-  csp->maxDataSent = max (csp->maxDataSent, sendSize);
-  csp->minDataSent = min (csp->minDataSent, sendSize);
+  csp->maxDataSent = max(csp->maxDataSent, sendSize);
+  csp->minDataSent = min(csp->minDataSent, sendSize);
 
-  csp->maxIO = max (csp->maxIO, ioSize);
-  csp->minIO = min (csp->minIO, ioSize);
+  csp->maxIO = max(csp->maxIO, ioSize);
+  csp->minIO = min(csp->minIO, ioSize);
 
-  csp->maxRMA = max (csp->maxRMA, rmaSize);
-  csp->minRMA = min (csp->minRMA, rmaSize);
+  csp->maxRMA = max(csp->maxRMA, rmaSize);
+  csp->minRMA = min(csp->minRMA, rmaSize);
 
-  if (threshold > -1 && (sendSize >= threshold))
-    csp->arbitraryMessageCount++;
+  if (threshold > -1 && (sendSize >= threshold)) csp->arbitraryMessageCount++;
 }
 
-
 /* Callsite statistics */
-void mpiPi_cs_merge(callsite_stats_t *dst, callsite_stats_t *src)
-{
+void mpiPi_cs_merge(callsite_stats_t *dst, callsite_stats_t *src) {
   dst->count += src->count;
   dst->cumulativeTime += src->cumulativeTime;
-  assert (dst->cumulativeTime >= 0);
+  assert(dst->cumulativeTime >= 0);
   dst->cumulativeTimeSquared += src->cumulativeTimeSquared;
-  assert (dst->cumulativeTimeSquared >= 0);
-  dst->maxDur = max (dst->maxDur, src->maxDur);
-  dst->minDur = min (dst->minDur, src->minDur);
-  dst->maxDataSent = max (dst->maxDataSent, src->maxDataSent);
-  dst->minDataSent = min (dst->minDataSent, src->minDataSent);
+  assert(dst->cumulativeTimeSquared >= 0);
+  dst->maxDur = max(dst->maxDur, src->maxDur);
+  dst->minDur = min(dst->minDur, src->minDur);
+  dst->maxDataSent = max(dst->maxDataSent, src->maxDataSent);
+  dst->minDataSent = min(dst->minDataSent, src->minDataSent);
   dst->cumulativeDataSent += src->cumulativeDataSent;
-  dst->maxIO = max (dst->maxIO, src->maxIO);
-  dst->minIO = min (dst->minIO, src->minIO);
+  dst->maxIO = max(dst->maxIO, src->maxIO);
+  dst->minIO = min(dst->minIO, src->minIO);
   dst->cumulativeIO += src->cumulativeIO;
   dst->cumulativeRMA += src->cumulativeRMA;
   dst->arbitraryMessageCount += src->arbitraryMessageCount;
@@ -106,131 +97,109 @@ void mpiPi_cs_merge(callsite_stats_t *dst, callsite_stats_t *src)
  * ============================================================================
  */
 
-typedef struct callsite_cache_entry_t
-{
+typedef struct callsite_cache_entry_t {
   void *pc;
   char *filename;
   char *functname;
   int line;
-}
-callsite_pc_cache_entry_t;
+} callsite_pc_cache_entry_t;
 
 h_t *callsite_pc_cache = NULL;
 h_t *callsite_src_id_cache = NULL;
 int callsite_src_id_counter = 1;
 
-static int
-callsite_pc_cache_comparator (const void *p1, const void *p2)
-{
-  callsite_pc_cache_entry_t *cs1 = (callsite_pc_cache_entry_t *) p1;
-  callsite_pc_cache_entry_t *cs2 = (callsite_pc_cache_entry_t *) p2;
+static int callsite_pc_cache_comparator(const void *p1, const void *p2) {
+  callsite_pc_cache_entry_t *cs1 = (callsite_pc_cache_entry_t *)p1;
+  callsite_pc_cache_entry_t *cs2 = (callsite_pc_cache_entry_t *)p2;
 
-  if ((long) cs1->pc > (long) cs2->pc)
-    {
-      return 1;
-    }
-  if ((long) cs1->pc < (long) cs2->pc)
-    {
-      return -1;
-    }
+  if ((long)cs1->pc > (long)cs2->pc) {
+    return 1;
+  }
+  if ((long)cs1->pc < (long)cs2->pc) {
+    return -1;
+  }
   return 0;
 }
 
-static int
-callsite_pc_cache_hashkey (const void *p1)
-{
-  callsite_pc_cache_entry_t *cs1 = (callsite_pc_cache_entry_t *) p1;
-  return 662917 ^ ((long) cs1->pc);
+static int callsite_pc_cache_hashkey(const void *p1) {
+  callsite_pc_cache_entry_t *cs1 = (callsite_pc_cache_entry_t *)p1;
+  return 662917 ^ ((long)cs1->pc);
 }
 
-static int
-callsite_src_id_cache_comparator (const void *p1, const void *p2)
-{
+static int callsite_src_id_cache_comparator(const void *p1, const void *p2) {
   int i;
-  callsite_src_id_cache_entry_t *csp_1 = (callsite_src_id_cache_entry_t *) p1;
-  callsite_src_id_cache_entry_t *csp_2 = (callsite_src_id_cache_entry_t *) p2;
+  callsite_src_id_cache_entry_t *csp_1 = (callsite_src_id_cache_entry_t *)p1;
+  callsite_src_id_cache_entry_t *csp_2 = (callsite_src_id_cache_entry_t *)p2;
 
-#define express(f) {if ((csp_1->f) > (csp_2->f)) {return 1;} if ((csp_1->f) < (csp_2->f)) {return -1;}}
-  if (mpiPi.reportStackDepth == 0)
-    {
-      express (id);		/* In cases where the call stack depth is 0, the only unique info may be the id */
-      return 0;
-    }
-  else
-    {
-      for (i = 0; i < mpiPi.fullStackDepth; i++)
-        {
-          if (csp_1->filename[i] != NULL && csp_2->filename[i] != NULL)
-            {
-              if (strcmp (csp_1->filename[i], csp_2->filename[i]) > 0)
-                {
-                  return 1;
-                }
-              if (strcmp (csp_1->filename[i], csp_2->filename[i]) < 0)
-                {
-                  return -1;
-                }
-              express (line[i]);
-              if (strcmp (csp_1->functname[i], csp_2->functname[i]) > 0)
-                {
-                  return 1;
-                }
-              if (strcmp (csp_1->functname[i], csp_2->functname[i]) < 0)
-                {
-                  return -1;
-                }
-            }
-
-          express (pc[i]);
+#define express(f)                 \
+  {                                \
+    if ((csp_1->f) > (csp_2->f)) { \
+      return 1;                    \
+    }                              \
+    if ((csp_1->f) < (csp_2->f)) { \
+      return -1;                   \
+    }                              \
+  }
+  if (mpiPi.reportStackDepth == 0) {
+    express(id); /* In cases where the call stack depth is 0, the only unique
+                    info may be the id */
+    return 0;
+  } else {
+    for (i = 0; i < mpiPi.fullStackDepth; i++) {
+      if (csp_1->filename[i] != NULL && csp_2->filename[i] != NULL) {
+        if (strcmp(csp_1->filename[i], csp_2->filename[i]) > 0) {
+          return 1;
         }
+        if (strcmp(csp_1->filename[i], csp_2->filename[i]) < 0) {
+          return -1;
+        }
+        express(line[i]);
+        if (strcmp(csp_1->functname[i], csp_2->functname[i]) > 0) {
+          return 1;
+        }
+        if (strcmp(csp_1->functname[i], csp_2->functname[i]) < 0) {
+          return -1;
+        }
+      }
+
+      express(pc[i]);
     }
+  }
 #undef express
   return 0;
 }
 
-static int
-callsite_src_id_cache_hashkey (const void *p1)
-{
+static int callsite_src_id_cache_hashkey(const void *p1) {
   int i, j;
   int res = 0;
-  callsite_src_id_cache_entry_t *cs1 = (callsite_src_id_cache_entry_t *) p1;
-  for (i = 0; i < mpiPi.fullStackDepth; i++)
-    {
-      if (cs1->filename[i] != NULL)
-        {
-          for (j = 0; cs1->filename[i][j] != '\0'; j++)
-            {
-              res ^= (unsigned) cs1->filename[i][j];
-            }
-          for (j = 0; cs1->functname[i][j] != '\0'; j++)
-            {
-              res ^= (unsigned) cs1->functname[i][j];
-            }
-        }
-      res ^= cs1->line[i];
+  callsite_src_id_cache_entry_t *cs1 = (callsite_src_id_cache_entry_t *)p1;
+  for (i = 0; i < mpiPi.fullStackDepth; i++) {
+    if (cs1->filename[i] != NULL) {
+      for (j = 0; cs1->filename[i][j] != '\0'; j++) {
+        res ^= (unsigned)cs1->filename[i][j];
+      }
+      for (j = 0; cs1->functname[i][j] != '\0'; j++) {
+        res ^= (unsigned)cs1->functname[i][j];
+      }
     }
+    res ^= cs1->line[i];
+  }
   return 662917 ^ res;
 }
 
-void mpiPi_cs_cache_init()
-{
-  if (callsite_pc_cache == NULL)
-    {
-      callsite_pc_cache = h_open (mpiPi.tableSize,
-                                  callsite_pc_cache_hashkey,
-                                  callsite_pc_cache_comparator);
-    }
-  if (callsite_src_id_cache == NULL)
-    {
-      callsite_src_id_cache = h_open (mpiPi.tableSize,
-                                      callsite_src_id_cache_hashkey,
-                                      callsite_src_id_cache_comparator);
-    }
+void mpiPi_cs_cache_init() {
+  if (callsite_pc_cache == NULL) {
+    callsite_pc_cache = h_open(mpiPi.tableSize, callsite_pc_cache_hashkey,
+                               callsite_pc_cache_comparator);
+  }
+  if (callsite_src_id_cache == NULL) {
+    callsite_src_id_cache =
+        h_open(mpiPi.tableSize, callsite_src_id_cache_hashkey,
+               callsite_src_id_cache_comparator);
+  }
 }
 
-int
-mpiPi_query_pc (void *pc, char **filename, char **functname, int *lineno)
-{
+int mpiPi_query_pc(void *pc, char **filename, char **functname, int *lineno) {
   int rc = 0;
   callsite_pc_cache_entry_t key;
   callsite_pc_cache_entry_t *csp;
@@ -238,53 +207,45 @@ mpiPi_query_pc (void *pc, char **filename, char **functname, int *lineno)
 
   key.pc = pc;
   /* do we have a cache entry for this pc? If so, use entry */
-  if (h_search (callsite_pc_cache, &key, (void **) &csp) == NULL)
-    {
-      /* no cache entry: create, lookup, and insert */
-      csp =
-          (callsite_pc_cache_entry_t *)
-          malloc (sizeof (callsite_pc_cache_entry_t));
-      csp->pc = pc;
+  if (h_search(callsite_pc_cache, &key, (void **)&csp) == NULL) {
+    /* no cache entry: create, lookup, and insert */
+    csp =
+        (callsite_pc_cache_entry_t *)malloc(sizeof(callsite_pc_cache_entry_t));
+    csp->pc = pc;
 #if defined(ENABLE_BFD) || defined(USE_LIBDWARF)
-      if (mpiP_find_src_loc (pc, filename, lineno, functname) == 0)
-        {
-          if (*filename == NULL || strcmp (*filename, "??") == 0)
-            *filename = "[unknown]";
+    if (mpiP_find_src_loc(pc, filename, lineno, functname) == 0) {
+      if (*filename == NULL || strcmp(*filename, "??") == 0)
+        *filename = "[unknown]";
 
-          if (*functname == NULL)
-            *functname = "[unknown]";
+      if (*functname == NULL) *functname = "[unknown]";
 
-          mpiPi_msg_debug
-              ("Successful Source lookup for [%s]: %s, %d, %s\n",
-               mpiP_format_address (pc, addr_buf), *filename, *lineno,
-               *functname);
+      mpiPi_msg_debug("Successful Source lookup for [%s]: %s, %d, %s\n",
+                      mpiP_format_address(pc, addr_buf), *filename, *lineno,
+                      *functname);
 
-          csp->filename = strdup (*filename);
-          csp->functname = strdup (*functname);
-          csp->line = *lineno;
-        }
-      else
-        {
-          mpiPi_msg_debug ("Unsuccessful Source lookup for [%s]\n",
-                           mpiP_format_address (pc, addr_buf));
-          csp->filename = strdup ("[unknown]");
-          csp->functname = strdup ("[unknown]");
-          csp->line = 0;
-        }
-#else /* ! ENABLE_BFD || USE_LIBDWARF */
-      csp->filename = strdup ("[unknown]");
-      csp->functname = strdup ("[unknown]");
+      csp->filename = strdup(*filename);
+      csp->functname = strdup(*functname);
+      csp->line = *lineno;
+    } else {
+      mpiPi_msg_debug("Unsuccessful Source lookup for [%s]\n",
+                      mpiP_format_address(pc, addr_buf));
+      csp->filename = strdup("[unknown]");
+      csp->functname = strdup("[unknown]");
       csp->line = 0;
-#endif
-      h_insert (callsite_pc_cache, csp);
     }
+#else /* ! ENABLE_BFD || USE_LIBDWARF */
+    csp->filename = strdup("[unknown]");
+    csp->functname = strdup("[unknown]");
+    csp->line = 0;
+#endif
+    h_insert(callsite_pc_cache, csp);
+  }
 
   *filename = csp->filename;
   *functname = csp->functname;
   *lineno = csp->line;
 
-  if (*lineno == 0)
-    rc = 1;			/* use this value to indicate a failed lookup */
+  if (*lineno == 0) rc = 1; /* use this value to indicate a failed lookup */
 
   return rc;
 }
@@ -292,63 +253,56 @@ mpiPi_query_pc (void *pc, char **filename, char **functname, int *lineno)
 /* take a callstats record (the pc) and determine src file, line, if
    possible and assign a callsite id.
  */
-int
-mpiPi_query_src (callsite_stats_t * p)
-{
+int mpiPi_query_src(callsite_stats_t *p) {
   int i;
   callsite_src_id_cache_entry_t key;
   callsite_src_id_cache_entry_t *csp;
-  assert (p);
+  assert(p);
 
   /* Because multiple pcs can map to the same source line, we must
      check that mapping here. If we got unknown, then we assign
      different ids */
-  bzero (&key, sizeof (callsite_src_id_cache_entry_t));
+  bzero(&key, sizeof(callsite_src_id_cache_entry_t));
 
-  for (i = 0; (i < mpiPi.fullStackDepth) && (p->pc[i] != NULL); i++)
-    {
-      if (mpiPi.do_lookup == 1)
-        mpiPi_query_pc (p->pc[i], &(p->filename[i]), &(p->functname[i]),
-                        &(p->lineno[i]));
-      else
-        {
-          p->filename[i] = strdup ("[unknown]");
-          p->functname[i] = strdup ("[unknown]");
-          p->lineno[i] = 0;
-        }
-
-      key.filename[i] = p->filename[i];
-      key.functname[i] = p->functname[i];
-      key.line[i] = p->lineno[i];
-      key.pc[i] = p->pc[i];
+  for (i = 0; (i < mpiPi.fullStackDepth) && (p->pc[i] != NULL); i++) {
+    if (mpiPi.do_lookup == 1)
+      mpiPi_query_pc(p->pc[i], &(p->filename[i]), &(p->functname[i]),
+                     &(p->lineno[i]));
+    else {
+      p->filename[i] = strdup("[unknown]");
+      p->functname[i] = strdup("[unknown]");
+      p->lineno[i] = 0;
     }
+
+    key.filename[i] = p->filename[i];
+    key.functname[i] = p->functname[i];
+    key.line[i] = p->lineno[i];
+    key.pc[i] = p->pc[i];
+  }
 
   /* MPI ID is compared when stack depth is 0 */
   key.id = p->op - mpiPi_BASE;
 
   /* lookup/generate an ID based on the callstack, not just the callsite pc */
-  if (h_search (callsite_src_id_cache, &key, (void **) &csp) == NULL)
-    {
-      /* create a new entry, and assign an id based on callstack */
-      csp =
-          (callsite_src_id_cache_entry_t *)
-          malloc (sizeof (callsite_src_id_cache_entry_t));
-      bzero (csp, sizeof (callsite_src_id_cache_entry_t));
+  if (h_search(callsite_src_id_cache, &key, (void **)&csp) == NULL) {
+    /* create a new entry, and assign an id based on callstack */
+    csp = (callsite_src_id_cache_entry_t *)malloc(
+        sizeof(callsite_src_id_cache_entry_t));
+    bzero(csp, sizeof(callsite_src_id_cache_entry_t));
 
-      for (i = 0; (i < mpiPi.fullStackDepth) && (p->pc[i] != NULL); i++)
-        {
-          csp->filename[i] = strdup (key.filename[i]);
-          csp->functname[i] = strdup (key.functname[i]);
-          csp->line[i] = key.line[i];
-          csp->pc[i] = p->pc[i];
-        }
-      csp->op = p->op;
-      if (mpiPi.reportStackDepth == 0)
-        csp->id = csp->op - mpiPi_BASE;
-      else
-        csp->id = callsite_src_id_counter++;
-      h_insert (callsite_src_id_cache, csp);
+    for (i = 0; (i < mpiPi.fullStackDepth) && (p->pc[i] != NULL); i++) {
+      csp->filename[i] = strdup(key.filename[i]);
+      csp->functname[i] = strdup(key.functname[i]);
+      csp->line[i] = key.line[i];
+      csp->pc[i] = p->pc[i];
     }
+    csp->op = p->op;
+    if (mpiPi.reportStackDepth == 0)
+      csp->id = csp->op - mpiPi_BASE;
+    else
+      csp->id = callsite_src_id_counter++;
+    h_insert(callsite_src_id_cache, csp);
+  }
 
   /* assign ID to this record */
   p->csid = csp->id;
