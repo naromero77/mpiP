@@ -264,6 +264,26 @@ File_read            1    1      20        64        64        64      1280
 File_read            1    *      40        64        64        64      2560
 ```
 
+The format of communication topology section is as follows:
+
+```
+---------------------------------------------------------------------------
+@--- Communication Topology (global communicator) -------------------------
+---------------------------------------------------------------------------
+   Rank  Neighbours
+     0:  1
+     1:  0 2
+     2:  1 3
+     3:  2
+```
+
+Note that the process ranks are presented as in the global communicator.
+
+If "-w" option is given, a binary file with ".graph" extension will be
+generated. The file stores the messages each process sends as (size, destination)
+pairs in binary form. To decode it into more readable form, use
+`bin/analyse-comm-graph.py`.
+
 ## Controlling Profiling Scope
 In mpiP, you can limit the scope of profiling measurements to specific regions of your code using the MPI\_Pcontrol(int level) subroutine. A value of zero disables mpiP profiling, while any nonzero value enables profiling. To disable profiling initially at MPI\_Init, use the -o configuration option. mpiP will only record information about MPI commands encountered between activation and deactivation. There is no limit to the number to times that an application can activate profiling during execution.
 
