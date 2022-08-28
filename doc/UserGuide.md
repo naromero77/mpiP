@@ -69,6 +69,8 @@ The behavior of mpiP can be set at run time through the use of the following fla
 |-s n|Set hash table size to \<n>. |256|
 |-t x|Set print threshold for report, where \<x> is the MPI percentage of time for each callsite. |0.0|
 |-v|Generates both concise and verbose report output.  |
+|-u|Generates communication topology report in output (default) |
+|-w|Generates communication graph in output dir.  |
 |-x exe |Specify the full path to the executable.  |
 |-y|Collective histogram reporting on message size and communicator used.|
 |-z|Suppress printing of the report at MPI_Finalize.  |
