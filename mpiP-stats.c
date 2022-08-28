@@ -365,35 +365,36 @@ void mpiPi_stats_thr_pt2pt_binstrings(mpiPi_thread_stat_t *stat, int comm_idx,
   _get_binstrings(&stat->pt2pt, comm_idx, comm_buf, size_idx, size_buf);
 }
 
-void mpiPi_graph_init(mpiPi_graph_t *graph) {
-  if (graph == NULL) return;
-  PMPI_Comm_group(MPI_COMM_WORLD, &graph->world_grp);
-  PMPI_Comm_rank(MPI_COMM_WORLD, &graph->rank);
-  PMPI_Comm_size(MPI_COMM_WORLD, &graph->size);
-  graph->neighbors = (char *)malloc((graph->size + 7) / 8);
-  memset(graph->neighbors, 0, (graph->size + 7) / 8);
+void mpiPi_topo_init(mpiPi_topo_t *topo) {
+  if (topo == NULL) return;
+  PMPI_Comm_group(MPI_COMM_WORLD, &topo->world_grp);
+  PMPI_Comm_rank(MPI_COMM_WORLD, &topo->rank);
+  PMPI_Comm_size(MPI_COMM_WORLD, &topo->nprocs);
+  topo->bitmap_bytes = (topo->nprocs + 7) / 8;
+  topo->neighbors = (char *)malloc(topo->bitmap_bytes);
+  memset(topo->neighbors, 0, topo->bitmap_bytes);
 }
 
-void mpiPi_graph_fini(mpiPi_graph_t *graph) {
-  if (graph == NULL) return;
-  free(graph->neighbors);
-  PMPI_Group_free(&graph->world_grp);
+void mpiPi_topo_fini(mpiPi_topo_t *topo) {
+  if (topo == NULL) return;
+  free(topo->neighbors);
+  PMPI_Group_free(&topo->world_grp);
 }
 
-void mpiPi_graph_reset_all(mpiPi_graph_t *graph) {
-  if (graph == NULL) return;
-  memset(graph->neighbors, 0, (graph->size + 7) / 8);
+void mpiPi_topo_reset_all(mpiPi_topo_t *topo) {
+  if (topo == NULL) return;
+  memset(topo->neighbors, 0, topo->bitmap_bytes);
 }
 
-void mpiPi_graph_upd(mpiPi_graph_t *graph, int *dest, MPI_Comm *comm) {
+void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm) {
   // Always translate to rank in the the world group.
   int dest2;
   MPI_Group grp;
-  if (graph == NULL) return;
+  if (topo == NULL) return;
   PMPI_Comm_group(*comm, &grp);
-  PMPI_Group_translate_ranks(grp, 1, dest, graph->world_grp, &dest2);
+  PMPI_Group_translate_ranks(grp, 1, dest, topo->world_grp, &dest2);
   PMPI_Group_free(&grp);
-  graph->neighbors[dest2 / 8] |= 1u << (dest2 % 8);
+  topo->neighbors[dest2 / 8] |= 1u << (dest2 % 8);
 }
 
 /*

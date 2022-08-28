@@ -67,7 +67,7 @@ void mpiPi_getenv() { /* NEED TO ADD SANITY CHECKS HERE */
 
     av[ac] = NULL;
 
-    for (; ((c = getopt(ac, av, "cdef:gk:lm:noprs:t:vwx:yz")) != EOF);) {
+    for (; ((c = getopt(ac, av, "cdef:gk:lm:noprs:t:uvx:yz")) != EOF);) {
       switch (c) {
       case 'f':
         mpiPi.outputDir = optarg;
@@ -223,8 +223,8 @@ void mpiPi_getenv() { /* NEED TO ADD SANITY CHECKS HERE */
         mpiPi.do_pt2pt_stats_report = 1;
         break;
 
-      case 'w':
-        mpiPi.do_pt2pt_graph_report = 1;
+      case 'u':
+        mpiPi.do_pt2pt_topo_report = 1;
         break;
 
       case 'a':
@@ -232,8 +232,8 @@ void mpiPi_getenv() { /* NEED TO ADD SANITY CHECKS HERE */
       case 'h':
       case 'i':
       case 'j':
+      case 'w':
       case 'q':
-      case 'u':
       default:
         if (mpiPi.rank == 0)
           mpiPi_msg_warn("Option flag (-%c) not recognized. Ignored.\n", c);

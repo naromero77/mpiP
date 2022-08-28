@@ -169,7 +169,7 @@ typedef struct _mpiPi_t {
   h_t *global_MPI_stats_agg;
 
   mpiPi_mt_stat_t task_stats;
-  mpiPi_graph_t graph;
+  mpiPi_topo_t topo;         // communication topology
 
   mpiPi_lookup_t *lookup;
 
@@ -203,7 +203,8 @@ typedef struct _mpiPi_t {
   double coll_time_stats[MPIP_NFUNC][MPIP_COMM_HISTCNT][MPIP_SIZE_HISTCNT];
   int do_pt2pt_stats_report;
   double pt2pt_send_stats[MPIP_NFUNC][MPIP_COMM_HISTCNT][MPIP_SIZE_HISTCNT];
-  int do_pt2pt_graph_report;
+
+  int do_pt2pt_topo_report;
 } mpiPi_t;
 
 extern mpiPi_t mpiPi;

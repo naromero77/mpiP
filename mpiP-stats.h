@@ -108,17 +108,18 @@ void mpiPi_stats_thr_exit(mpiPi_thread_stat_t *stat);
 void mpiPi_stats_thr_enter(mpiPi_thread_stat_t *stat);
 int mpiPi_stats_thr_is_on(mpiPi_thread_stat_t *stat);
 
-// Communication graph analysis
+// Communication topology
 typedef struct {
   MPI_Group world_grp;  // group of MPI_COMM_WORLD
   int rank;             // my rank in MPI_COMM_WORLD
-  int size;             // the size of MPI_COMM_WORLD
-  char *neighbors;   // bitmap for whether a neighbour is accessed.
-} mpiPi_graph_t;
-void mpiPi_graph_init(mpiPi_graph_t *graph);
-void mpiPi_graph_fini(mpiPi_graph_t *graph);
-void mpiPi_graph_reset_all(mpiPi_graph_t *graph);
-void mpiPi_graph_upd(mpiPi_graph_t *graph, int *dest, MPI_Comm *comm);
+  int nprocs;           // the size of MPI_COMM_WORLD
+  int bitmap_bytes;     // size of the bitmap
+  char *neighbors;      // bitmap for whether a neighbour is accessed.
+} mpiPi_topo_t;
+void mpiPi_topo_init(mpiPi_topo_t *topo);
+void mpiPi_topo_fini(mpiPi_topo_t *topo);
+void mpiPi_topo_reset_all(mpiPi_topo_t *topo);
+void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm);
 
 #endif
 

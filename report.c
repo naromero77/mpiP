@@ -594,25 +594,25 @@ static void mpiPi_print_top_time_sites(FILE *fp) {
   free(av);
 }
 
-static void mpiPi_print_comm_graph(FILE *fp) {
-  int bufsize = (mpiPi.graph.size + 7) / 8;
+static void mpiPi_print_comm_topo(FILE *fp) {
+  int bufsize = mpiPi.topo.bitmap_bytes;
   if (mpiPi.rank == mpiPi.collectorRank) {
     int i, j;
     char *buf = NULL;
     char *ptr = NULL;
-    print_section_heading(fp, "Communication Graph (global communicator)");
+    print_section_heading(fp, "Communication Topology (global communicator)");
     fprintf(fp, "%7s  %s\n", "Rank", "Neighbours");
     buf = (char *)malloc(bufsize);
-    for (i = 0; i < mpiPi.graph.size; i++) {
-      if (i == mpiPi.rank) {
-        ptr = mpiPi.graph.neighbors;
+    for (i = 0; i < mpiPi.topo.nprocs; i++) {
+      if (i == mpiPi.topo.rank) {
+        ptr = mpiPi.topo.neighbors;
       } else {
         MPI_Status s;
         MPI_Recv(buf, bufsize, MPI_BYTE, i, 0, MPI_COMM_WORLD, &s);
         ptr = buf;
       }
       fprintf(fp, "%6d: ", i);
-      for (j = 0; j < mpiPi.graph.size; j++) {
+      for (j = 0; j < mpiPi.topo.nprocs; j++) {
         if ((ptr[j / 8] & (1u << (j % 8))) != 0) {
           fprintf(fp, " %d", j);
         }
@@ -621,7 +621,7 @@ static void mpiPi_print_comm_graph(FILE *fp) {
     }
     free(buf);
   } else {
-    MPI_Send(mpiPi.graph.neighbors, bufsize, MPI_BYTE, mpiPi.collectorRank, 0,
+    MPI_Send(mpiPi.topo.neighbors, bufsize, MPI_BYTE, mpiPi.collectorRank, 0,
              MPI_COMM_WORLD);
   }
 }
@@ -2498,8 +2498,8 @@ void mpiPi_profile_print(FILE *fp, int report_style) {
   else if (report_style == mpiPi_style_concise)
     mpiPi_profile_print_concise(fp);
 
-  if (mpiPi.do_pt2pt_graph_report) {
-    mpiPi_print_comm_graph(fp);
+  if (mpiPi.do_pt2pt_topo_report) {
+    mpiPi_print_comm_topo(fp);
   }
 
   if (mpiPi.collectorRank == mpiPi.rank)

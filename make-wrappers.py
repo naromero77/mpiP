@@ -1199,8 +1199,8 @@ def CreateWrapper(funct, olist):
          if (fdict[funct].paramDict[i].basetype == "MPI_Comm"):
            olist.append("\nif (mpiPi.do_pt2pt_stats_report) { mpiPi_update_pt2pt_stats(hndl, " + "mpiPi_" + funct + "," \
               + " dur, " + "(double)messSize," +  " " + i + "); }\n")
-      olist.append("\nif (mpiPi.do_pt2pt_graph_report) {\n" +
-                   "  mpiPi_graph_upd(&mpiPi.graph, dest, comm);\n}\n")
+      olist.append("\nif (mpiPi.do_pt2pt_topo_report) {\n" +
+                   "  mpiPi_topo_upd(&mpiPi.topo, dest, comm);\n}\n")
 
     # end of enabled check
     olist.append("}\n\n")
