@@ -67,7 +67,7 @@ void mpiPi_getenv() { /* NEED TO ADD SANITY CHECKS HERE */
 
     av[ac] = NULL;
 
-    for (; ((c = getopt(ac, av, "cdef:gk:lm:noprs:t:uvx:yz")) != EOF);) {
+    for (; ((c = getopt(ac, av, "cdef:gk:lm:noprs:t:uvwx:yz")) != EOF);) {
       switch (c) {
       case 'f':
         mpiPi.outputDir = optarg;
@@ -227,12 +227,15 @@ void mpiPi_getenv() { /* NEED TO ADD SANITY CHECKS HERE */
         mpiPi.do_pt2pt_topo_report = 1;
         break;
 
+      case 'w':
+        mpiPi.do_pt2pt_graph_report = 1;
+        break;
+
       case 'a':
       case 'b':
       case 'h':
       case 'i':
       case 'j':
-      case 'w':
       case 'q':
       default:
         if (mpiPi.rank == 0)

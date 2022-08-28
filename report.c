@@ -22,6 +22,7 @@ static char *svnid = "$Id$";
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "mpiPi.h"
 
@@ -608,7 +609,7 @@ static void mpiPi_print_comm_topo(FILE *fp) {
         ptr = mpiPi.topo.neighbors;
       } else {
         MPI_Status s;
-        MPI_Recv(buf, bufsize, MPI_BYTE, i, 0, MPI_COMM_WORLD, &s);
+        PMPI_Recv(buf, bufsize, MPI_BYTE, i, 0, MPI_COMM_WORLD, &s);
         ptr = buf;
       }
       fprintf(fp, "%6d: ", i);
@@ -621,8 +622,52 @@ static void mpiPi_print_comm_topo(FILE *fp) {
     }
     free(buf);
   } else {
-    MPI_Send(mpiPi.topo.neighbors, bufsize, MPI_BYTE, mpiPi.collectorRank, 0,
-             MPI_COMM_WORLD);
+    PMPI_Send(mpiPi.topo.neighbors, bufsize, MPI_BYTE, mpiPi.collectorRank, 0,
+              MPI_COMM_WORLD);
+  }
+}
+
+static void mpiPi_dump_comm_graph() {
+  static int printCount = 0;
+  if (mpiPi.rank == mpiPi.collectorRank) {
+    FILE *fp = NULL;
+    char fn[256];
+    int i;
+    do {
+      printCount++;
+      snprintf(fn, 256, "%s/%s.%d.%d.%d.graph", mpiPi.outputDir, mpiPi.appName,
+               mpiPi.size, mpiPi.procID, printCount);
+    } while (access(fn, F_OK) == 0);
+    fp = fopen(fn, "wb");
+    for (i = 0; i < mpiPi.graph.nprocs; i++) {
+      int msg_count;
+      char *ptr = NULL;
+      char *buf = NULL;
+      if (i == mpiPi.graph.rank) {
+        msg_count = mpiPi.graph.msg_count;
+        ptr = mpiPi.graph.msgs;
+      } else {
+        MPI_Status s;
+        PMPI_Recv(&msg_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &s);
+        buf = (char *)malloc(msg_count * sizeof(mpiPi_graph_edge_t));
+        PMPI_Recv(buf, 1, msg_count * sizeof(mpiPi_graph_edge_t), MPI_BYTE, i,
+                  1, MPI_COMM_WORLD, &s);
+        ptr = buf;
+      }
+      fwrite(&msg_count, sizeof(int), 1, fp);
+      fwrite(buf, msg_count * sizeof(mpiPi_graph_edge_t), 1, fp);
+      if (i != mpiPi.graph.rank) {
+        free(buf);
+        buf = NULL;
+      }
+    }
+    fclose(fp);
+  } else {
+    PMPI_Send(&mpiPi.graph.msg_count, 1, MPI_INT, mpiPi.collectorRank, 0,
+              MPI_COMM_WORLD);
+    PMPI_Send(mpiPi.graph.msgs,
+              mpiPi.graph.msg_count * sizeof(mpiPi_graph_edge_t), MPI_BYTE,
+              mpiPi.collectorRank, 1, MPI_COMM_WORLD);
   }
 }
 
@@ -2500,6 +2545,10 @@ void mpiPi_profile_print(FILE *fp, int report_style) {
 
   if (mpiPi.do_pt2pt_topo_report) {
     mpiPi_print_comm_topo(fp);
+  }
+
+  if (mpiPi.do_pt2pt_graph_report) {
+    mpiPi_dump_comm_graph();
   }
 
   if (mpiPi.collectorRank == mpiPi.rank)

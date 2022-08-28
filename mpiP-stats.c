@@ -397,6 +397,46 @@ void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm) {
   topo->neighbors[dest2 / 8] |= 1u << (dest2 % 8);
 }
 
+void mpiPi_graph_init(mpiPi_graph_t *graph) {
+  if (graph == NULL) return;
+  PMPI_Comm_group(MPI_COMM_WORLD, &graph->world_grp);
+  PMPI_Comm_rank(MPI_COMM_WORLD, &graph->rank);
+  PMPI_Comm_size(MPI_COMM_WORLD, &graph->nprocs);
+  graph->msg_count = 0;
+  graph->msg_cap = 1024;
+  graph->msgs =
+      (mpiPi_graph_edge_t *)malloc(sizeof(mpiPi_graph_edge_t) * graph->msg_cap);
+}
+
+void mpiPi_graph_fini(mpiPi_graph_t *graph) {
+  if (graph == NULL) return;
+  free(graph->msgs);
+  PMPI_Group_free(&graph->world_grp);
+}
+
+void mpiPi_graph_reset_all(mpiPi_graph_t *graph) {
+  if (graph == NULL) return;
+  graph->msg_count = 0;
+}
+
+void mpiPi_graph_upd(mpiPi_graph_t *graph, int *dest, double size,
+                     MPI_Comm *comm) {
+  int dest2;
+  MPI_Group grp;
+  if (graph == NULL) return;
+  if (graph->msg_count == graph->msg_cap) {
+    graph->msg_cap = graph->msg_cap * 2;
+    graph->msgs =
+        realloc(graph->msgs, sizeof(mpiPi_graph_edge_t) * graph->msg_cap);
+  }
+  PMPI_Comm_group(*comm, &grp);
+  PMPI_Group_translate_ranks(grp, 1, dest, graph->world_grp, &dest2);
+  PMPI_Group_free(&grp);
+  graph->msgs[graph->msg_count].dest = dest2;
+  graph->msgs[graph->msg_count].size = size;
+  graph->msg_count++;
+}
+
 /*
 
   <license>

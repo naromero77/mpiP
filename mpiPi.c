@@ -152,6 +152,7 @@ void mpiPi_init(char *appName, mpiPi_thr_mode_t thr_mode) {
   mpiPi.do_collective_stats_report = 0;
   mpiPi.do_pt2pt_stats_report = 0;
   mpiPi.do_pt2pt_topo_report = 1;
+  mpiPi.do_pt2pt_graph_report = 0;
 #ifdef SO_LOOKUP
   mpiPi.so_info = NULL;
 #endif
@@ -159,6 +160,7 @@ void mpiPi_init(char *appName, mpiPi_thr_mode_t thr_mode) {
 
   mpiPi_stats_mt_init(&mpiPi.task_stats, thr_mode);
   mpiPi_topo_init(&mpiPi.topo);
+  mpiPi_graph_init(&mpiPi.graph);
 
   /* -- welcome msg only collector  */
   if (mpiPi.collectorRank == mpiPi.rank) {
@@ -693,6 +695,7 @@ void mpiPi_finalize() {
 
   mpiPi_stats_mt_fini(&mpiPi.task_stats);
   mpiPi_topo_fini(&mpiPi.topo);
+  mpiPi_graph_fini(&mpiPi.graph);
 
   if (mpiPi.global_task_app_time != NULL) free(mpiPi.global_task_app_time);
 

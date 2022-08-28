@@ -1201,6 +1201,8 @@ def CreateWrapper(funct, olist):
               + " dur, " + "(double)messSize," +  " " + i + "); }\n")
       olist.append("\nif (mpiPi.do_pt2pt_topo_report) {\n" +
                    "  mpiPi_topo_upd(&mpiPi.topo, dest, comm);\n}\n")
+      olist.append("\nif (mpiPi.do_pt2pt_graph_report) {\n" +
+                   "  mpiPi_graph_upd(&mpiPi.graph, dest, messSize, comm);\n}\n")
 
     # end of enabled check
     olist.append("}\n\n")

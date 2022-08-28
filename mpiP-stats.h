@@ -123,6 +123,25 @@ void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm);
 
 #endif
 
+// Communication graph
+typedef struct {
+  int dest;
+  double size;
+} mpiPi_graph_edge_t;
+typedef struct {
+  MPI_Group world_grp;       // group of MPI_COMM_WORLD
+  int rank;                  // my rank in MPI_COMM_WORLD
+  int nprocs;                // the size of MPI_COMM_WORLD
+  int msg_count;             // message count
+  int msg_cap;               // current message capacity
+  mpiPi_graph_edge_t *msgs;  // every message sent from current process
+} mpiPi_graph_t;
+void mpiPi_graph_init(mpiPi_graph_t *graph);
+void mpiPi_graph_fini(mpiPi_graph_t *graph);
+void mpiPi_graph_reset_all(mpiPi_graph_t *graph);
+void mpiPi_graph_upd(mpiPi_graph_t *graph, int *dest, double size,
+                     MPI_Comm *comm);
+
 /*
 
   <license>
