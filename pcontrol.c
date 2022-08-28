@@ -72,12 +72,9 @@ static int mpiPi_MPI_Pcontrol(const int flag) {
     mpiPi_reset_callsite_data();
   } else if (flag == 3) {
     mpiPi_generateReport(mpiPi_style_verbose);
-    mpiPi_topo_reset_all(&mpiPi.topo);
     mpiPi_stats_mt_timer_start(&mpiPi.task_stats);
   } else if (flag == 4) {
     mpiPi_generateReport(mpiPi_style_concise);
-    mpiPi_topo_reset_all(&mpiPi.topo);
-    mpiPi_graph_reset_all(&mpiPi.graph);
     mpiPi_stats_mt_timer_start(&mpiPi.task_stats);
   } else {
     if (mpiPi.enabled)
@@ -86,8 +83,6 @@ static int mpiPi_MPI_Pcontrol(const int flag) {
 
     mpiPi.enabled = 1;
     mpiPi.enabledCount++;
-    mpiPi_topo_reset_all(&mpiPi.topo);
-    mpiPi_graph_reset_all(&mpiPi.graph);
     mpiPi_stats_mt_timer_start(&mpiPi.task_stats);
   }
 
