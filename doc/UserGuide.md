@@ -318,6 +318,7 @@ MPI_Pcontrol features should be fully functional for C/C++ as well as Fortran.
 |2	|Reset all callsite data|
 |3	|Generate verbose report|
 |4	|Generate concise report|
+
 If you want to generate individual reports each time a section of code is executed, but don't want the profile data to accumulate, you can specify code to reset the profile data, profile, and then generate reports.  For example:
 
 ```
