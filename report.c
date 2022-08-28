@@ -645,18 +645,23 @@ static void mpiPi_dump_comm_graph() {
       char *buf = NULL;
       if (i == mpiPi.graph.rank) {
         msg_count = mpiPi.graph.msg_count;
-        ptr = mpiPi.graph.msgs;
+        ptr = (char*)mpiPi.graph.msgs;
       } else {
         MPI_Status s;
         PMPI_Recv(&msg_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &s);
+        if (msg_count > 0) {
         buf = (char *)malloc(msg_count * sizeof(mpiPi_graph_edge_t));
-        PMPI_Recv(buf, 1, msg_count * sizeof(mpiPi_graph_edge_t), MPI_BYTE, i,
+        PMPI_Recv(buf, msg_count * sizeof(mpiPi_graph_edge_t), MPI_BYTE, i,
                   1, MPI_COMM_WORLD, &s);
         ptr = buf;
+        }
       }
+      fwrite(&i, sizeof(int), 1, fp);
       fwrite(&msg_count, sizeof(int), 1, fp);
-      fwrite(buf, msg_count * sizeof(mpiPi_graph_edge_t), 1, fp);
-      if (i != mpiPi.graph.rank) {
+      if (msg_count > 0) {
+      fwrite(ptr, msg_count * sizeof(mpiPi_graph_edge_t), 1, fp);
+      }
+      if (i != mpiPi.graph.rank && msg_count > 0) {
         free(buf);
         buf = NULL;
       }
@@ -665,9 +670,11 @@ static void mpiPi_dump_comm_graph() {
   } else {
     PMPI_Send(&mpiPi.graph.msg_count, 1, MPI_INT, mpiPi.collectorRank, 0,
               MPI_COMM_WORLD);
+    if (mpiPi.graph.msg_count > 0) {
     PMPI_Send(mpiPi.graph.msgs,
               mpiPi.graph.msg_count * sizeof(mpiPi_graph_edge_t), MPI_BYTE,
               mpiPi.collectorRank, 1, MPI_COMM_WORLD);
+    }
   }
 }
 

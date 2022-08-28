@@ -121,8 +121,6 @@ void mpiPi_topo_fini(mpiPi_topo_t *topo);
 void mpiPi_topo_reset_all(mpiPi_topo_t *topo);
 void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm);
 
-#endif
-
 // Communication graph
 typedef struct {
   int dest;
@@ -141,6 +139,8 @@ void mpiPi_graph_fini(mpiPi_graph_t *graph);
 void mpiPi_graph_reset_all(mpiPi_graph_t *graph);
 void mpiPi_graph_upd(mpiPi_graph_t *graph, int *dest, double size,
                      MPI_Comm *comm);
+
+#endif
 
 /*
 
