@@ -123,8 +123,8 @@ void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm);
 
 // Communication graph
 typedef struct {
-  int dest;
   double size;
+  int dest;
 } mpiPi_graph_edge_t;
 typedef struct {
   MPI_Group world_grp;       // group of MPI_COMM_WORLD

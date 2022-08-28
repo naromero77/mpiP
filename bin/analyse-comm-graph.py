@@ -12,7 +12,7 @@ import functools
 
 def parse_graph(fn):
     s1 = "ii"  # proc messages header
-    s2 = "id"  # message descriptor
+    s2 = "di"  # message descriptor
     s1s = struct.calcsize(s1)
     s2s = struct.calcsize(s2)
     with open(fn, "rb") as f:
