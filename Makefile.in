@@ -255,7 +255,7 @@ install:: ${SHARED_C_TARGET} ${DEMANGLE_TARGET} ${FORTRAN_TARGET}
 	${INSTALL} ${SHARED_C_TARGET} ${DESTDIR}${libdir}/${SHARED_C_TARGET}
 	if test "x${DEMANGLE_TARGET}" != "x" ; then ${INSTALL} ${DEMANGLE_TARGET} ${DESTDIR}${libdir}/${DEMANGLE_TARGET} ; fi
 	if test "x${FORTRAN_TARGET}" != "x" ; then ${INSTALL} ${FORTRAN_TARGET} ${DESTDIR}${libdir}/${FORTRAN_TARGET} ; fi
-	${INSTALL} doc/*md doc/*html doc/*pdf doc/README ${DESTDIR}${docdir} ; \
+	${INSTALL} doc/*md doc/README ${DESTDIR}${docdir} ; \
 
 install-api: API
 	mkdir -p ${DESTDIR}${libdir} ${DESTDIR}${includedir}/mpip_timers 
