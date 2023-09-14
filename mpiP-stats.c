@@ -1,6 +1,6 @@
+#include "mpiP-stats.h"
 #include <stdlib.h>
 #include <string.h>
-#include "mpiP-stats.h"
 #include "mpiPi.h"
 
 /*
@@ -11,57 +11,44 @@
  * ============================================================================
  */
 
-static int
-get_histogram_bin (mpiPi_histogram_t * h, int val)
-{
+static int get_histogram_bin(mpiPi_histogram_t *h, int val) {
   int wv = val;
   int bin;
 
   bin = 0;
 
-  if (h->bin_intervals == NULL)
-    {
-      while (wv > h->first_bin_max && bin < h->hist_size)
-        {
-          wv >>= 1;
-          bin++;
-        }
+  if (h->bin_intervals == NULL) {
+    while (wv > h->first_bin_max && bin < h->hist_size) {
+      wv >>= 1;
+      bin++;
     }
-  else   /* Add code for custom intervals later */
-    {
-    }
+  } else /* Add code for custom intervals later */
+  {
+  }
 
   return bin;
 }
 
-
-void
-init_histogram (mpiPi_histogram_t * h, int first_bin_max, int size,
-                int *intervals)
-{
+void init_histogram(mpiPi_histogram_t *h, int first_bin_max, int size,
+                    int *intervals) {
   h->first_bin_max = first_bin_max;
   h->hist_size = size;
   h->bin_intervals = intervals;
 }
 
-void
-get_histogram_bin_str (mpiPi_histogram_t * h, int v, char *s)
-{
+void get_histogram_bin_str(mpiPi_histogram_t *h, int v, char *s) {
   int min = 0, max = 0;
 
-  if (v == 0)
-    {
-      min = 0;
-      max = h->first_bin_max;
-    }
-  else
-    {
-      min = h->first_bin_max + 1;
-      min <<= (v - 1);
-      max = (min << 1) - 1;
-    }
+  if (v == 0) {
+    min = 0;
+    max = h->first_bin_max;
+  } else {
+    min = h->first_bin_max + 1;
+    min <<= (v - 1);
+    max = (min << 1) - 1;
+  }
 
-  sprintf (s, "%8d - %8d", min, max);
+  sprintf(s, "%8d - %8d", min, max);
 }
 
 /*
@@ -72,70 +59,65 @@ get_histogram_bin_str (mpiPi_histogram_t * h, int v, char *s)
  * ============================================================================
  */
 
-
-static int
-_thrd_pc_hashkey (const void *p)
-{
+static int _thrd_pc_hashkey(const void *p) {
   int res = 0;
   int i;
-  callsite_stats_t *csp = (callsite_stats_t *) p;
-  MPIP_CALLSITE_STATS_COOKIE_ASSERT (csp);
-  for (i = 0; i < mpiPi.fullStackDepth; i++)
-    {
-      res ^= (unsigned) (long) csp->pc[i];
-    }
+  callsite_stats_t *csp = (callsite_stats_t *)p;
+  MPIP_CALLSITE_STATS_COOKIE_ASSERT(csp);
+  for (i = 0; i < mpiPi.fullStackDepth; i++) {
+    res ^= (unsigned)(long)csp->pc[i];
+  }
   return 52271 ^ csp->op ^ res ^ csp->rank;
 }
 
-static int
-trd_pc_comparator (const void *p1, const void *p2)
-{
+static int trd_pc_comparator(const void *p1, const void *p2) {
   int i;
-  callsite_stats_t *csp_1 = (callsite_stats_t *) p1;
-  callsite_stats_t *csp_2 = (callsite_stats_t *) p2;
-  MPIP_CALLSITE_STATS_COOKIE_ASSERT (csp_1);
-  MPIP_CALLSITE_STATS_COOKIE_ASSERT (csp_2);
+  callsite_stats_t *csp_1 = (callsite_stats_t *)p1;
+  callsite_stats_t *csp_2 = (callsite_stats_t *)p2;
+  MPIP_CALLSITE_STATS_COOKIE_ASSERT(csp_1);
+  MPIP_CALLSITE_STATS_COOKIE_ASSERT(csp_2);
 
-#define express(f) {if ((csp_1->f) > (csp_2->f)) {return 1;} if ((csp_1->f) < (csp_2->f)) {return -1;}}
-  express (op);
-  express (rank);
+#define express(f)                 \
+  {                                \
+    if ((csp_1->f) > (csp_2->f)) { \
+      return 1;                    \
+    }                              \
+    if ((csp_1->f) < (csp_2->f)) { \
+      return -1;                   \
+    }                              \
+  }
+  express(op);
+  express(rank);
 
-  for (i = 0; i < mpiPi.fullStackDepth; i++)
-    {
-      express (pc[i]);
-    }
+  for (i = 0; i < mpiPi.fullStackDepth; i++) {
+    express(pc[i]);
+  }
 #undef express
 
   return 0;
 }
 
-void mpiPi_stats_thr_init(mpiPi_thread_stat_t *stat)
-{
-  stat->cs_stats = h_open (mpiPi.tableSize, _thrd_pc_hashkey,
-                                      trd_pc_comparator);
+void mpiPi_stats_thr_init(mpiPi_thread_stat_t *stat) {
+  stat->cs_stats = h_open(mpiPi.tableSize, _thrd_pc_hashkey, trd_pc_comparator);
 
   bzero(stat->coll.time_stats, sizeof(stat->coll.time_stats));
-  if (mpiPi.do_collective_stats_report == 1)
-    {
-      init_histogram (&stat->coll.comm_hist, 7, MPIP_COMM_HISTCNT, NULL);
-      init_histogram (&stat->coll.size_hist, 7, MPIP_SIZE_HISTCNT, NULL);
-    }
+  if (mpiPi.do_collective_stats_report == 1) {
+    init_histogram(&stat->coll.comm_hist, 7, MPIP_COMM_HISTCNT, NULL);
+    init_histogram(&stat->coll.size_hist, 7, MPIP_SIZE_HISTCNT, NULL);
+  }
 
   bzero(stat->pt2pt.time_stats, sizeof(stat->pt2pt.time_stats));
-  if (mpiPi.do_pt2pt_stats_report == 1)
-    {
-      init_histogram (&stat->pt2pt.comm_hist, 7, MPIP_COMM_HISTCNT, NULL);
-      init_histogram (&stat->pt2pt.size_hist, 7, MPIP_SIZE_HISTCNT, NULL);
-    }
+  if (mpiPi.do_pt2pt_stats_report == 1) {
+    init_histogram(&stat->pt2pt.comm_hist, 7, MPIP_COMM_HISTCNT, NULL);
+    init_histogram(&stat->pt2pt.size_hist, 7, MPIP_SIZE_HISTCNT, NULL);
+  }
 }
 
-void mpiPi_stats_thr_fini(mpiPi_thread_stat_t *stat)
-{
-  h_close (stat->cs_stats);
+void mpiPi_stats_thr_fini(mpiPi_thread_stat_t *stat) {
+  h_close(stat->cs_stats);
 }
 
-void mpiPi_stats_thr_reset_all(mpiPi_thread_stat_t *s)
-{
+void mpiPi_stats_thr_reset_all(mpiPi_thread_stat_t *s) {
   /* Reset callsite statistics */
   mpiPi_stats_thr_cs_reset(s);
   bzero(s->coll.time_stats, sizeof(s->coll.time_stats));
@@ -144,83 +126,63 @@ void mpiPi_stats_thr_reset_all(mpiPi_thread_stat_t *s)
 }
 
 void mpiPi_stats_thr_merge_all(mpiPi_thread_stat_t *dst,
-                               mpiPi_thread_stat_t *src)
-{
+                               mpiPi_thread_stat_t *src) {
   mpiPi_stats_thr_cs_merge(dst, src);
   mpiPi_stats_thr_coll_merge(dst, src);
   mpiPi_stats_thr_pt2pt_merge(dst, src);
   dst->cum_time += src->cum_time;
 }
 
-static inline double _get_duration(mpiPi_thread_stat_t *s)
-{
+static inline double _get_duration(mpiPi_thread_stat_t *s) {
   double dur = 0.0;
-  dur = (mpiPi_GETTIMEDIFF (&s->ts_end, &s->ts_start) / 1000000.0);
+  dur = (mpiPi_GETTIMEDIFF(&s->ts_end, &s->ts_start) / 1000000.0);
   return dur;
 }
 
-void mpiPi_stats_thr_timer_start(mpiPi_thread_stat_t *s)
-{
-  mpiPi_GETTIME (&s->ts_start);
+void mpiPi_stats_thr_timer_start(mpiPi_thread_stat_t *s) {
+  mpiPi_GETTIME(&s->ts_start);
 }
-void mpiPi_stats_thr_timer_stop(mpiPi_thread_stat_t *s)
-{
-  mpiPi_GETTIME (&s->ts_end);
+void mpiPi_stats_thr_timer_stop(mpiPi_thread_stat_t *s) {
+  mpiPi_GETTIME(&s->ts_end);
   s->cum_time += _get_duration(s);
 }
 
-double mpiPi_stats_thr_cum_time(mpiPi_thread_stat_t *s)
-{
-  return s->cum_time;
-}
+double mpiPi_stats_thr_cum_time(mpiPi_thread_stat_t *s) { return s->cum_time; }
 
-void mpiPi_stats_thr_exit(mpiPi_thread_stat_t *stat)
-{
-  stat->disabled++;
-}
+void mpiPi_stats_thr_exit(mpiPi_thread_stat_t *stat) { stat->disabled++; }
 
-void mpiPi_stats_thr_enter(mpiPi_thread_stat_t *stat)
-{
-  stat->disabled--;
-}
+void mpiPi_stats_thr_enter(mpiPi_thread_stat_t *stat) { stat->disabled--; }
 
-int mpiPi_stats_thr_is_on(mpiPi_thread_stat_t *stat)
-{
+int mpiPi_stats_thr_is_on(mpiPi_thread_stat_t *stat) {
   return !(stat->disabled) && mpiPi.enabled;
 }
 
-void
-mpiPi_stats_thr_cs_upd (mpiPi_thread_stat_t *stat,
-                           unsigned op, unsigned rank, void **pc,
-                           double dur, double sendSize, double ioSize,
-                           double rmaSize)
-{
+void mpiPi_stats_thr_cs_upd(mpiPi_thread_stat_t *stat, unsigned op,
+                            unsigned rank, void **pc, double dur,
+                            double sendSize, double ioSize, double rmaSize) {
   int i;
   callsite_stats_t *csp = NULL;
   callsite_stats_t key;
 
-  assert (dur >= 0);
+  assert(dur >= 0);
 
   /* Check for the nested calls */
-  if (!mpiPi_stats_thr_is_on(stat))
-    return;
+  if (!mpiPi_stats_thr_is_on(stat)) return;
 
   key.op = op;
   key.rank = rank;
   key.cookie = MPIP_CALLSITE_STATS_COOKIE;
-  for (i = 0; i < mpiPi.fullStackDepth; i++)
-    {
-      key.pc[i] = pc[i];
-    }
+  for (i = 0; i < mpiPi.fullStackDepth; i++) {
+    key.pc[i] = pc[i];
+  }
 
-  if (NULL == h_search (stat->cs_stats, &key, (void **) &csp))
-    {
-      /* create and insert */
-      csp = (callsite_stats_t *) malloc (sizeof (callsite_stats_t));
-      bzero (csp, sizeof (callsite_stats_t));
-      mpiPi_cs_init(csp, pc, op, rank);
-      h_insert (stat->cs_stats, csp);
-    }
+  if (NULL == h_search(stat->cs_stats, &key, (void **)&csp)) {
+    /* create and insert */
+    csp = (callsite_stats_t *)malloc(sizeof(callsite_stats_t));
+    bzero(csp, sizeof(callsite_stats_t));
+    mpiPi_cs_init(csp, pc, op, rank);
+    h_insert(stat->cs_stats, csp);
+  }
   /* ASSUME: csp cannot be deleted from list */
   mpiPi_cs_update(csp, dur, sendSize, ioSize, rmaSize,
                   mpiPi.messageCountThreshold);
@@ -235,14 +197,12 @@ mpiPi_stats_thr_cs_upd (mpiPi_thread_stat_t *stat,
   return;
 }
 
-void mpiPi_stats_thr_cs_gather(mpiPi_thread_stat_t *stat,
-                             int *ac, callsite_stats_t ***av )
-{
-  h_gather_data (stat->cs_stats, ac, (void ***)av);
+void mpiPi_stats_thr_cs_gather(mpiPi_thread_stat_t *stat, int *ac,
+                               callsite_stats_t ***av) {
+  h_gather_data(stat->cs_stats, ac, (void ***)av);
 }
 
-void mpiPi_stats_thr_cs_reset(mpiPi_thread_stat_t *stat)
-{
+void mpiPi_stats_thr_cs_reset(mpiPi_thread_stat_t *stat) {
   int ac, ndx;
   callsite_stats_t **av;
   callsite_stats_t *csp = NULL;
@@ -250,120 +210,100 @@ void mpiPi_stats_thr_cs_reset(mpiPi_thread_stat_t *stat)
   /* gather local task data */
   h_drain(stat->cs_stats, &ac, (void ***)&av);
 
-  for (ndx = 0; ndx < ac; ndx++)
-    {
-      free(av[ndx]);
-    }
+  for (ndx = 0; ndx < ac; ndx++) {
+    free(av[ndx]);
+  }
   free(av);
 }
 
 void mpiPi_stats_thr_cs_lookup(mpiPi_thread_stat_t *stat,
-                              callsite_stats_t *task_stats,
-                              callsite_stats_t **task_lookup,
-                              callsite_stats_t *dummy_buf,
-                              int initMax)
-{
+                               callsite_stats_t *task_stats,
+                               callsite_stats_t **task_lookup,
+                               callsite_stats_t *dummy_buf, int initMax) {
   callsite_stats_t *record = NULL;
-  if (NULL == h_search(stat->cs_stats,
-                       task_stats,(void **)&record))
-    {
-      record = dummy_buf;
-      mpiPi_cs_reset_stat(record);
-      if (!initMax) {
-          record->minDur = 0;
-          record->minDataSent = 0;
-          record->minIO = 0;
-        }
-      record->rank = mpiPi.rank;
+  if (NULL == h_search(stat->cs_stats, task_stats, (void **)&record)) {
+    record = dummy_buf;
+    mpiPi_cs_reset_stat(record);
+    if (!initMax) {
+      record->minDur = 0;
+      record->minDataSent = 0;
+      record->minIO = 0;
     }
+    record->rank = mpiPi.rank;
+  }
   *task_lookup = record;
 }
 
 void mpiPi_stats_thr_cs_merge(mpiPi_thread_stat_t *dst,
-                              mpiPi_thread_stat_t *src)
-{
+                              mpiPi_thread_stat_t *src) {
   int ac, i;
   callsite_stats_t **av;
   /* Merge callsite statistics */
   mpiPi_stats_thr_cs_gather(src, &ac, &av);
-  for(i=0; i<ac; i++)
-    {
-      callsite_stats_t *csp_src = av[i], *csp_dst;
+  for (i = 0; i < ac; i++) {
+    callsite_stats_t *csp_src = av[i], *csp_dst;
 
-      /* Search for the callsite and create a new record if needed */
-      if (NULL == h_search (dst->cs_stats, csp_src, (void **) &csp_dst))
-        {
-          /* create and insert */
-          csp_dst = (callsite_stats_t *) malloc (sizeof (callsite_stats_t));
-          bzero (csp_dst, sizeof (callsite_stats_t));
-          mpiPi_cs_init(csp_dst, csp_src->pc, csp_src->op, csp_src->rank);
-          h_insert (dst->cs_stats, csp_dst);
-        }
-      /* Merge callsite records */
-      mpiPi_cs_merge(csp_dst, csp_src);
+    /* Search for the callsite and create a new record if needed */
+    if (NULL == h_search(dst->cs_stats, csp_src, (void **)&csp_dst)) {
+      /* create and insert */
+      csp_dst = (callsite_stats_t *)malloc(sizeof(callsite_stats_t));
+      bzero(csp_dst, sizeof(callsite_stats_t));
+      mpiPi_cs_init(csp_dst, csp_src->pc, csp_src->op, csp_src->rank);
+      h_insert(dst->cs_stats, csp_dst);
     }
+    /* Merge callsite records */
+    mpiPi_cs_merge(csp_dst, csp_src);
+  }
 
-  free (av);
+  free(av);
 }
 
 /* Collective histogram stats track call timing */
-static void _update_dur_stat (mpiPi_msg_stat_t *stat,
-                                int op, double dur, double size,
-                                MPI_Comm * comm,
-                                char *dbg_prefix)
-{
+static void _update_dur_stat(mpiPi_msg_stat_t *stat, int op, double dur,
+                             double size, MPI_Comm *comm, char *dbg_prefix) {
   int op_idx, comm_size, comm_bin, size_bin;
 
-  PMPI_Comm_size (*comm, &comm_size);
+  PMPI_Comm_size(*comm, &comm_size);
 
   op_idx = op - mpiPi_BASE;
 
-  comm_bin = get_histogram_bin (&stat->comm_hist, comm_size);
-  size_bin = get_histogram_bin (&stat->size_hist, size);
+  comm_bin = get_histogram_bin(&stat->comm_hist, comm_size);
+  size_bin = get_histogram_bin(&stat->size_hist, size);
 
-  mpiPi_msg_debug
-      ("Adding %.0f time to entry %s[%d][%d][%d] value of %.0f\n",
-       dur, dbg_prefix,
-       op_idx, comm_bin, size_bin,
-       stat->time_stats[op_idx][comm_bin][size_bin]);
+  mpiPi_msg_debug("Adding %.0f time to entry %s[%d][%d][%d] value of %.0f\n",
+                  dur, dbg_prefix, op_idx, comm_bin, size_bin,
+                  stat->time_stats[op_idx][comm_bin][size_bin]);
 
   stat->time_stats[op_idx][comm_bin][size_bin] += dur;
 }
 
 /* Message size statistics */
-static void _gather_msize_stat(mpiPi_msg_stat_t *stat,
-                               double **_outbuf)
-{
+static void _gather_msize_stat(mpiPi_msg_stat_t *stat, double **_outbuf) {
   double *outbuf = malloc(sizeof(stat->time_stats));
   memcpy(outbuf, stat->time_stats, sizeof(stat->time_stats));
   *_outbuf = outbuf;
 }
 
-static void _update_msize_stat (mpiPi_msg_stat_t *stat,
-                                int op, double dur, double size,
-                                MPI_Comm * comm,
-                                char *dbg_prefix)
-{
+static void _update_msize_stat(mpiPi_msg_stat_t *stat, int op, double dur,
+                               double size, MPI_Comm *comm, char *dbg_prefix) {
   int op_idx, comm_size, comm_bin, size_bin;
 
-  PMPI_Comm_size (*comm, &comm_size);
+  PMPI_Comm_size(*comm, &comm_size);
 
   op_idx = op - mpiPi_BASE;
 
-  comm_bin = get_histogram_bin (&stat->comm_hist, comm_size);
-  size_bin = get_histogram_bin (&stat->size_hist, size);
+  comm_bin = get_histogram_bin(&stat->comm_hist, comm_size);
+  size_bin = get_histogram_bin(&stat->size_hist, size);
 
-  mpiPi_msg_debug
-      ("Adding %.0f send size to entry %s[%d][%d][%d] value of %.0f\n",
-       size, dbg_prefix,
-       op_idx, comm_bin, size_bin,
-       stat->time_stats[op_idx][comm_bin][size_bin]);
+  mpiPi_msg_debug(
+      "Adding %.0f send size to entry %s[%d][%d][%d] value of %.0f\n", size,
+      dbg_prefix, op_idx, comm_bin, size_bin,
+      stat->time_stats[op_idx][comm_bin][size_bin]);
 
   stat->time_stats[op_idx][comm_bin][size_bin] += size;
 }
 
-static void _merge_msize_stat (mpiPi_msg_stat_t *dst, mpiPi_msg_stat_t *src)
-{
+static void _merge_msize_stat(mpiPi_msg_stat_t *dst, mpiPi_msg_stat_t *src) {
   int i = 0, x, y, z;
   for (x = 0; x < MPIP_NFUNC; x++)
     for (y = 0; y < MPIP_COMM_HISTCNT; y++)
@@ -371,74 +311,130 @@ static void _merge_msize_stat (mpiPi_msg_stat_t *dst, mpiPi_msg_stat_t *src)
         dst->time_stats[x][y][z] += src->time_stats[x][y][z];
 }
 
-static void _get_binstrings (mpiPi_msg_stat_t *stat,
-                             int comm_idx, char *comm_buf,
-                             int size_idx, char *size_buf)
-{
-  get_histogram_bin_str (&stat->comm_hist, comm_idx, comm_buf);
-  get_histogram_bin_str (&stat->size_hist, size_idx, size_buf);
+static void _get_binstrings(mpiPi_msg_stat_t *stat, int comm_idx,
+                            char *comm_buf, int size_idx, char *size_buf) {
+  get_histogram_bin_str(&stat->comm_hist, comm_idx, comm_buf);
+  get_histogram_bin_str(&stat->size_hist, size_idx, size_buf);
 }
 
-
 /* Collectives msg size stat */
-void mpiPi_stats_thr_coll_upd (mpiPi_thread_stat_t *stat,
-                                  int op, double dur, double size,
-                                  MPI_Comm * comm)
-{
+void mpiPi_stats_thr_coll_upd(mpiPi_thread_stat_t *stat, int op, double dur,
+                              double size, MPI_Comm *comm) {
   /* Check for the nested calls */
-  if (!mpiPi_stats_thr_is_on(stat))
-    return;
+  if (!mpiPi_stats_thr_is_on(stat)) return;
 
   _update_dur_stat(&stat->coll, op, dur, size, comm, "collectives");
 }
 
-void mpiPi_stats_thr_coll_gather(mpiPi_thread_stat_t *stat, double **_outbuf)
-{
+void mpiPi_stats_thr_coll_gather(mpiPi_thread_stat_t *stat, double **_outbuf) {
   _gather_msize_stat(&stat->coll, _outbuf);
 }
 
 void mpiPi_stats_thr_coll_merge(mpiPi_thread_stat_t *dst,
-                                mpiPi_thread_stat_t *src)
-{
+                                mpiPi_thread_stat_t *src) {
   _merge_msize_stat(&dst->coll, &src->coll);
 }
 
-void mpiPi_stats_thr_coll_binstrings(mpiPi_thread_stat_t *stat,
-                                     int comm_idx, char *comm_buf,
-                                     int size_idx, char *size_buf)
-{
+void mpiPi_stats_thr_coll_binstrings(mpiPi_thread_stat_t *stat, int comm_idx,
+                                     char *comm_buf, int size_idx,
+                                     char *size_buf) {
   _get_binstrings(&stat->coll, comm_idx, comm_buf, size_idx, size_buf);
 }
 
-
 /* Point-to-point statistics */
-void mpiPi_stats_thr_pt2pt_upd (mpiPi_thread_stat_t *stat,
-                                   int op, double dur, double size,
-                                   MPI_Comm * comm)
-{
+void mpiPi_stats_thr_pt2pt_upd(mpiPi_thread_stat_t *stat, int op, double dur,
+                               double size, MPI_Comm *comm) {
   /* Check for the nested calls */
-  if (!mpiPi_stats_thr_is_on(stat))
-    return;
+  if (!mpiPi_stats_thr_is_on(stat)) return;
 
   _update_msize_stat(&stat->pt2pt, op, dur, size, comm, "point-to-point");
 }
 
-void mpiPi_stats_thr_pt2pt_gather(mpiPi_thread_stat_t *stat, double **_outbuf)
-{
+void mpiPi_stats_thr_pt2pt_gather(mpiPi_thread_stat_t *stat, double **_outbuf) {
   _gather_msize_stat(&stat->pt2pt, _outbuf);
 }
 
 void mpiPi_stats_thr_pt2pt_merge(mpiPi_thread_stat_t *dst,
-                                mpiPi_thread_stat_t *src)
-{
+                                 mpiPi_thread_stat_t *src) {
   _merge_msize_stat(&dst->pt2pt, &src->pt2pt);
 }
 
-void mpiPi_stats_thr_pt2pt_binstrings(mpiPi_thread_stat_t *stat,
-                                     int comm_idx, char *comm_buf,
-                                     int size_idx, char *size_buf)
-{
+void mpiPi_stats_thr_pt2pt_binstrings(mpiPi_thread_stat_t *stat, int comm_idx,
+                                      char *comm_buf, int size_idx,
+                                      char *size_buf) {
   _get_binstrings(&stat->pt2pt, comm_idx, comm_buf, size_idx, size_buf);
+}
+
+void mpiPi_topo_init(mpiPi_topo_t *topo) {
+  if (topo == NULL) return;
+  PMPI_Comm_group(MPI_COMM_WORLD, &topo->world_grp);
+  PMPI_Comm_rank(MPI_COMM_WORLD, &topo->rank);
+  PMPI_Comm_size(MPI_COMM_WORLD, &topo->nprocs);
+  topo->bitmap_bytes = (topo->nprocs + 7) / 8;
+  topo->neighbors = (char *)malloc(topo->bitmap_bytes);
+  memset(topo->neighbors, 0, topo->bitmap_bytes);
+}
+
+void mpiPi_topo_fini(mpiPi_topo_t *topo) {
+  if (topo == NULL) return;
+  free(topo->neighbors);
+  PMPI_Group_free(&topo->world_grp);
+}
+
+void mpiPi_topo_reset_all(mpiPi_topo_t *topo) {
+  if (topo == NULL) return;
+  memset(topo->neighbors, 0, topo->bitmap_bytes);
+}
+
+void mpiPi_topo_upd(mpiPi_topo_t *topo, int *dest, MPI_Comm *comm) {
+  // Always translate to rank in the the world group.
+  int dest2;
+  MPI_Group grp;
+  if (topo == NULL) return;
+  PMPI_Comm_group(*comm, &grp);
+  PMPI_Group_translate_ranks(grp, 1, dest, topo->world_grp, &dest2);
+  PMPI_Group_free(&grp);
+  topo->neighbors[dest2 / 8] |= 1u << (dest2 % 8);
+}
+
+void mpiPi_graph_init(mpiPi_graph_t *graph) {
+  if (graph == NULL) return;
+  PMPI_Comm_group(MPI_COMM_WORLD, &graph->world_grp);
+  PMPI_Comm_rank(MPI_COMM_WORLD, &graph->rank);
+  PMPI_Comm_size(MPI_COMM_WORLD, &graph->nprocs);
+  graph->msg_count = 0;
+  graph->msg_cap = 1024;
+  graph->msgs =
+      (mpiPi_graph_edge_t *)malloc(sizeof(mpiPi_graph_edge_t) * graph->msg_cap);
+}
+
+void mpiPi_graph_fini(mpiPi_graph_t *graph) {
+  if (graph == NULL) return;
+  free(graph->msgs);
+  PMPI_Group_free(&graph->world_grp);
+}
+
+void mpiPi_graph_reset_all(mpiPi_graph_t *graph) {
+  if (graph == NULL) return;
+  graph->msg_count = 0;
+}
+
+void mpiPi_graph_upd(mpiPi_graph_t *graph, int *dest, double size,
+                     MPI_Comm *comm) {
+  int dest2;
+  MPI_Group grp;
+  if (graph == NULL) return;
+  if (graph->msg_count == graph->msg_cap) {
+    graph->msg_cap = graph->msg_cap * 2;
+    graph->msgs =
+        realloc(graph->msgs, sizeof(mpiPi_graph_edge_t) * graph->msg_cap);
+  }
+  PMPI_Comm_group(*comm, &grp);
+  PMPI_Group_translate_ranks(grp, 1, dest, graph->world_grp, &dest2);
+  PMPI_Group_free(&grp);
+  graph->msgs[graph->msg_count].dest = dest2;
+  graph->msgs[graph->msg_count].size = size;
+  graph->msg_count++;
 }
 
 /*

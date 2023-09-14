@@ -1,0 +1,14 @@
+Makefile
+config.*
+compile_flags.txt
+*.mak
+get_fortran_arg.f
+symbols.h
+mpiPi_def.h
+mpiP-wrappers.c
+lookup.c
+mpi.protos.txt
+mpiPconfig.h
+aix_local.h
+*.o
+*.so

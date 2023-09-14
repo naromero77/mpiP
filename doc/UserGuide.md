@@ -69,6 +69,8 @@ The behavior of mpiP can be set at run time through the use of the following fla
 |-s n|Set hash table size to \<n>. |256|
 |-t x|Set print threshold for report, where \<x> is the MPI percentage of time for each callsite. |0.0|
 |-v|Generates both concise and verbose report output.  |
+|-u|Generates communication topology report in output (default) |
+|-w|Generates communication graph in output dir.  |
 |-x exe |Specify the full path to the executable.  |
 |-y|Collective histogram reporting on message size and communicator used.|
 |-z|Suppress printing of the report at MPI_Finalize.  |
@@ -262,6 +264,26 @@ File_read            1    1      20        64        64        64      1280
 File_read            1    *      40        64        64        64      2560
 ```
 
+The format of communication topology section is as follows:
+
+```
+---------------------------------------------------------------------------
+@--- Communication Topology (global communicator) -------------------------
+---------------------------------------------------------------------------
+   Rank  Neighbours
+     0:  1
+     1:  0 2
+     2:  1 3
+     3:  2
+```
+
+Note that the process ranks are presented as in the global communicator.
+
+If "-w" option is given, a binary file with ".graph" extension will be
+generated. The file stores the messages each process sends as (size, destination)
+pairs in binary form. To decode it into more readable form, use
+`bin/analyse-comm-graph.py`.
+
 ## Controlling Profiling Scope
 In mpiP, you can limit the scope of profiling measurements to specific regions of your code using the MPI\_Pcontrol(int level) subroutine. A value of zero disables mpiP profiling, while any nonzero value enables profiling. To disable profiling initially at MPI\_Init, use the -o configuration option. mpiP will only record information about MPI commands encountered between activation and deactivation. There is no limit to the number to times that an application can activate profiling during execution.
 
@@ -296,6 +318,7 @@ MPI_Pcontrol features should be fully functional for C/C++ as well as Fortran.
 |2	|Reset all callsite data|
 |3	|Generate verbose report|
 |4	|Generate concise report|
+
 If you want to generate individual reports each time a section of code is executed, but don't want the profile data to accumulate, you can specify code to reset the profile data, profile, and then generate reports.  For example:
 
 ```

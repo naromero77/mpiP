@@ -7,8 +7,9 @@
    -----
 
    thread_safe_list.h -- Implementation of the thread-safe list based on atomics
-   NOTE: only one thread is allowed to extract elements, but many can contribute.
-   This fits perfectly fine with the purpose of holding TLS pointers in mpiP.
+   NOTE: only one thread is allowed to extract elements, but many can
+   contribute. This fits perfectly fine with the purpose of holding TLS pointers
+   in mpiP.
 
  */
 
@@ -33,7 +34,7 @@ void *mpiPi_tslist_dequeue(mpiP_tslist_t *list);
 mpiP_tslist_elem_t *mpiPi_tslist_first(mpiP_tslist_t *list);
 mpiP_tslist_elem_t *mpiPi_tslist_next(mpiP_tslist_elem_t *current);
 
-#endif // THREAD_SAFE_LIST_H
+#endif  // THREAD_SAFE_LIST_H
 
 /*
 
